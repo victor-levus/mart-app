@@ -7,7 +7,7 @@ from .common import *
 SECRET_KEY = os.environ['SECRET_KEY']
 
 
-ALLOWED_HOSTS = ['super-mart2.herokuapp.com']
+ALLOWED_HOSTS = ['mart-bend.onrender.com']
 
 CSRF_TRUSTED_ORIGINS = ['https://super-mart2.herokuapp.com',
                         'https://localhost:3000', 'https://betcodes-fe.vercel.app/']
