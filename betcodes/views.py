@@ -3,8 +3,8 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.permissions import SAFE_METHODS, AllowAny, IsAdminUser, IsAuthenticated
 import logging
 
-from betcodes.models import BetCode, FootballClub, BookCodeInfo, Likes, Post, Comment
-from betcodes.serializers import BetCodeSerializer, FootballClubSerializer, BookCodeInfoSerializer, LikeSerializer, PostSerializer, CommentSerializer
+from betcodes.models import BetCode, FootballClub, BookCodeInfo, Likes, Post, Comment, Reply
+from betcodes.serializers import BetCodeSerializer, FootballClubSerializer, BookCodeInfoSerializer, LikeSerializer, PostSerializer, CommentSerializer, ReplySerializer, CreateCommentSerializer
 
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,8 @@ class BookCodeInfoViewSet(ModelViewSet):
 
 
 class PostViewSet(ModelViewSet):
-    queryset = Post.objects.prefetch_related('user', 'comments').all()
+    queryset = Post.objects.select_related(
+        'user').prefetch_related('comments').all()
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticated]
 
@@ -47,27 +48,45 @@ class ProfilePostViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Post.objects.prefetch_related('user', 'comments').filter(user_id=self.request.user.id)
+        return Post.objects.select_related('user').prefetch_related('comments').filter(user_id=self.request.user.id)
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context['user_id'] = self.request.user
-        logger.info('self.kwargs2')
         return context
 
 
 class CommentViewSet(ModelViewSet):
-    serializer_class = CommentSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Comment.objects.filter(post_id=self.kwargs['post_pk'])
+        return Comment.objects.select_related().prefetch_related().filter(post_id=self.kwargs['post_pk'])
+
+    def get_serializer_class(self):
+        if self.request.method in SAFE_METHODS:
+            return CommentSerializer
+        return CreateCommentSerializer
 
     def get_serializer_context(self):
+
         return {'post_id': self.kwargs['post_pk'], 'user_id': self.request.user}
+
+
+class ReplyViewSet(ModelViewSet):
+    serializer_class = ReplySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Reply.objects.select_related('user', 'comment').filter(comment_id=self.kwargs['comment_pk'])
+
+    def get_serializer_context(self):
+
+        return {'post_id': self.kwargs['post_pk'], 'comment_id': self.kwargs['comment_pk'], 'user_id': self.request.user}
 
 
 class LikesViewSet(ModelViewSet):
     serializer_class = LikeSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return Likes.objects.filter(post_id=self.kwargs['post_pk'])
